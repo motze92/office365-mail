@@ -1,0 +1,29 @@
+{
+    "name": "motze92/office365-mail",
+    "description": "Office365 transport for Laravel",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Moritz Mair",
+            "homepage": "https://github.com/motze92",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^7.1.3",
+        "microsoft/microsoft-graph": "^1.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Office365Mail\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Office365Mail\\Office365MailServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev"
+}

@@ -51,7 +51,7 @@ class Office365MailTransport extends Transport
                     'toRecipients' => $this->getTo($message),
                     'subject' => $message->getSubject(),
                     'body' => [
-                        'contentType' => $message->getContentType() == "text/html" ? 'html' : 'text',
+                        'contentType' => $message->getBodyContentType() == "text/html" ? 'html' : 'text',
                         'content' => $message->getBody()
                     ]
                 ]

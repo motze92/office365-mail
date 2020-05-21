@@ -24,7 +24,7 @@ class Office365MailTransport extends Transport
         $graph->setAccessToken($this->getAccessToken());
 
         $graph->createRequest("POST", "/users/".key($message->getFrom())."/sendmail")->attachBody($this->getBody($message))->execute();
-        
+
         $this->sendPerformed($message);
 
         return $this->numberOfRecipients($message);
@@ -39,13 +39,13 @@ class Office365MailTransport extends Transport
 
     protected function getBody(Swift_Mime_SimpleMessage $message)
     {
-        return [
-            'message' => 
+        $messageData = [
+            'message' =>
                 [
                     'from' => [
                         'emailAddress' => [
                             'address' => key($message->getFrom()),
-                            'name' => current($message->getFrom())    
+                            'name' => current($message->getFrom())
                         ]
                     ],
                     'toRecipients' => $this->getTo($message),
@@ -56,6 +56,23 @@ class Office365MailTransport extends Transport
                     ]
                 ]
         ];
+
+        //add attachments if any
+        $attachments = [];
+        foreach($message->getChildren() as $attachment) {
+            if($attachment instanceof \Swift_Attachment) {
+                $attachments[] = [
+                    "@odata.type" => "#microsoft.graph.fileAttachment",
+                    "name" => $attachment->getHeaders()->get('Content-Disposition')->getParameter('filename'),
+                    "contentType" => $attachment->getBodyContentType(),
+                    "contentBytes" => base64_encode($attachment->getBody())
+                ];
+            }
+        }
+        if(count($attachments)>0) {
+            $messageData['message']['attachments'] = $attachments;
+        }
+        return $messageData;
     }
 
     /**
@@ -107,7 +124,7 @@ class Office365MailTransport extends Transport
                 'grant_type' => 'client_credentials',
             ],
         ])->getBody()->getContents());
-        
+
         return $token->access_token;
     }
 }

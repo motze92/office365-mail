@@ -1,43 +1,77 @@
-# Laravel Microsoft Graph Mail driver
 
+#  Laravel Microsoft Graph Mail driver
 
-Mail driver for Laravel to send emails using Microsoft Graph without user authetication.
+  
+  
+
+Mail driver for Laravel to send emails using Microsoft Graph without user authentication and SMTP. Only specify the E-Mail-Address in the FROM-Header of the E-Mail and this Office 365 Package will send the E-Mail trough the Microsoft Graph-Api and put the sent E-Mail in the sender's Mailbox sent folder.
+
+**Key features:**
+
+ - Send E-Mails with the Microsoft Graph-Api instead of the SMTP driver
+ - Automatically puts the E-Mail in the Sent folder of the user in the From-Header
+ - One Application per Organization
+ - Supports multiple Domains
+ - Supports large file attachments
+ - Faster and Error-less than the Office-365 SMTP
 
 To use this package you have to register your application [here](https://go.microsoft.com/fwlink/?linkid=2083908). More informations [here](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
 
-## Install the Package
+  
+
+##  Install the Package
+
 You can install the package with Composer, either run `composer require motze92/office365-mail`, or edit your `composer.json` file:
+
 ```
 {
-    "require": {
-        "motze92/office365-mail": "^1.0"
-    }
+  "require": {
+    "motze92/office365-mail": "^1.0"
+  }
 }
 ```
 
+  
+
 To publish the config file use this command:
 
+  
+
 ```php
-
-php artisan vendor:publish --tag=office365mail
-
+php  artisan  vendor:publish  --tag=office365mail
 ```
 
-## Configure
+  
 
-To obtain needed config values use this [instructions](https://docs.microsoft.com/en-us/graph/auth-v2-service).
+##  Configure
 
-.env
+  
+
+To obtain needed config values use this [instructions](https://docs.microsoft.com/en-us/graph/auth-v2-service):
+
+  - Open the [Azure Active Directory-Portal](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/Overview)) with your Office365 Admin-User
+  - Open the Section Manage > [App-Registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps)
+  - Create a new App
+  - Within the App under `Manage` >  `API-Permissions` add the `Mail.ReadWrite` permission (Microsoft Graph > Application Permissions > Mail > Mail.ReadWrite)
+  - After saving the permission apply the Admin-Permission for your organization
+  - In the Section Manage > Certificates and Secrets create a new Client Secret with Expiration = never, this you need later for the `.env` - Variable  `OFFICE365MAIL_CLIENT_SECRET`
+
+The `Mail.ReadWrite` Permission is needed when sending large attachments (>4MB).
+  
+#### .env - File
 
 ```
 MAIL_DRIVER=office365mail
-
 OFFICE365MAIL_CLIENT_ID=YOUR-MS-GRAPH-CLIENT-ID
 OFFICE365MAIL_TENANT=YOUR-MS-GRAPH-TENANT-ID
 OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
-
 ```
 
-## Copyright and license
+## Credits
+  
+[Moritz Mair](https://clea.solutions/), [Matthias Radmüller](https://www.radmueller.net)
+
+##  Copyright and license
+
 
 Copyright (c) Moritz Mair. All Rights Reserved. Licensed under the MIT [license](LICENSE).

@@ -1,10 +1,8 @@
 
-#  Laravel Microsoft Graph Mail driver
+#  Laravel Microsoft Graph Mail driver - Mail Driver for Office365 
 
-  
-  
 
-Mail driver for Laravel to send emails using Microsoft Graph without user authentication and SMTP. Only specify the E-Mail-Address in the FROM-Header of the E-Mail and this Office 365 Package will send the E-Mail trough the Microsoft Graph-Api and put the sent E-Mail in the sender's Mailbox sent folder.
+Mail driver for the [Laravel framework](https://laravel.com/) to send emails using Microsoft Graph without user authentication and SMTP. Only specify the E-Mail-Address in the FROM-Header of the E-Mail and this Office 365 Package will send the E-Mail trough the Microsoft Graph-Api and put the sent E-Mail in the sender's Mailbox sent folder.
 
 **Key features:**
 

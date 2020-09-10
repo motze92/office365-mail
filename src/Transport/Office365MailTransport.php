@@ -38,7 +38,7 @@ class Office365MailTransport extends Transport
 
 
         //special treatment if the message has too large attachments
-        if ($attachmentCount > 0 && $attachmentSizeMb >= 4) {
+        if ($attachmentCount > 0 && $attachmentSizeMb >= 3.5) {
             $graphMessage = $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages")
                 ->attachBody($this->getBody($message))
                 ->setReturnType(\Microsoft\Graph\Model\Message::class)

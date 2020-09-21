@@ -1,11 +1,11 @@
 {
-    "name": "motze92/office365-mail",
+    "name": "mmerm/office365-mail",
     "description": "Office365 transport for Laravel",
     "license": "MIT",
     "authors": [
         {
             "name": "Moritz Mair",
-            "homepage": "https://github.com/motze92",
+            "homepage": "https://github.com/mmerm",
             "role": "Developer"
         }
     ],

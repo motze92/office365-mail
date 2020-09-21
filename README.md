@@ -1,5 +1,5 @@
 
-#  Laravel 7.x Microsoft Graph Mail driver - Mail Driver for Office365 
+#  Laravel Microsoft Graph Mail driver - Mail Driver for Office365 
 
 
 Mail driver for the [Laravel framework](https://laravel.com/) to send emails using Microsoft Graph without user authentication and SMTP. Only specify the E-Mail-Address in the FROM-Header of the E-Mail and this Office 365 Package will send the E-Mail trough the Microsoft Graph-Api and put the sent E-Mail in the sender's Mailbox sent folder.
@@ -19,12 +19,12 @@ To use this package you have to register your application [here](https://go.micr
 
 ##  Install the Package
 
-You can install the package with Composer, either run `composer require mmerm/office365-mail`, or edit your `composer.json` file:
+You can install the package with Composer, either run `composer require motze92/office365-mail`, or edit your `composer.json` file:
 
 ```
 {
   "require": {
-    "mmerm/office365-mail": "^1.0"
+    "motze92/office365-mail": "^1.0"
   }
 }
 ```
@@ -80,4 +80,4 @@ OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
 ##  Copyright and license
 
 
-Copyright (c) Merlin Mayr. All Rights Reserved. Licensed under the MIT [license](LICENSE).
+Copyright (c) Moritz Mair. All Rights Reserved. Licensed under the MIT [license](LICENSE).

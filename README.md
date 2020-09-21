@@ -50,7 +50,7 @@ To obtain needed config values use this [instructions](https://docs.microsoft.co
   - Open the [Azure Active Directory-Portal](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/Overview)) with your Office365 Admin-User
   - Open the Section Manage > [App-Registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps)
   - Create a new App
-  - Within the App under `Manage` >  `API-Permissions` > `Application Permissions` add the `Mail.ReadWrite` and the `Mail.Send` permission (Microsoft Graph > Application Permissions > Mail > Mail.ReadWrite)
+  - Within the App under `Manage` >  `API-Permissions` > `Application Permissions` add the `Mail.ReadWrite` and the `Mail.Send` permission (Microsoft Graph > Application Permissions > Mail > Mail.ReadWrite and Microsoft Graph > Application Permissions > Mail > Mail.Send)
   - After saving the permission apply the Admin-Permission for your organization
   - In the Section Manage > Certificates and Secrets create a new Client Secret with Expiration = never, this you need later for the `.env` - Variable  `OFFICE365MAIL_CLIENT_SECRET`
 
@@ -63,6 +63,14 @@ MAIL_DRIVER=office365mail
 OFFICE365MAIL_CLIENT_ID=YOUR-MS-GRAPH-CLIENT-ID
 OFFICE365MAIL_TENANT=YOUR-MS-GRAPH-TENANT-ID
 OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
+```
+
+### config/mail.php - add to mailer configuration array (https://github.com/laravel/laravel/blob/7.x/config/mail.php)
+
+```
+'office365mail' => [
+            'transport' => 'office365mail',
+      ],
 ```
 
 ## Credits

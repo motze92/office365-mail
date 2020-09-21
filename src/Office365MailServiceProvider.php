@@ -1,10 +1,11 @@
 <?php 
 namespace Office365Mail; 
  
-use Illuminate\Mail\MailServiceProvider; 
-use Office365Mail\Transport\Office365AddedTransportManager;
+use Illuminate\Mail\MailManager;
+use Illuminate\Support\ServiceProvider;
+use Office365Mail\Transport\Office365MailTransport;
 
-class Office365MailServiceProvider extends MailServiceProvider 
+class Office365MailServiceProvider extends ServiceProvider 
 { 
     public function boot() 
     { 
@@ -13,10 +14,20 @@ class Office365MailServiceProvider extends MailServiceProvider
         ], 'office365mail');
     }
  
-    protected function registerSwiftTransport()
+    /**
+     * {@inheritdoc}
+     */
+    public function register()
     {
-        $this->app->singleton('swift.transport', function ($app) {
-            return new Office365AddedTransportManager($app);
+        $this->app->afterResolving(MailManager::class, function (MailManager $manager) {
+            $this->extendMailManager($manager);
+        });
+    }
+
+    public function extendMailManager(MailManager $manager)
+    {
+        $manager->extend('office365mail', function () {
+            return new Office365MailTransport();
         });
     }
 }

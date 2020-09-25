@@ -24,12 +24,22 @@ You can install the package with Composer, either run `composer require motze92/
 ```
 {
   "require": {
-    "motze92/office365-mail": "^1.0"
+    "motze92/office365-mail": "^2.0"
   }
 }
 ```
 
-  
+### Laravel < 7
+
+For Larevel 6 and earlier please use 
+
+```
+{
+  "require": {
+    "motze92/office365-mail": "1.0.4"
+  }
+}
+```
 
 To publish the config file use this command:
 
@@ -75,7 +85,7 @@ OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
 
 ## Credits
   
-[Moritz Mair](https://clea.solutions/), [Matthias Radmüller](https://www.radmueller.net), [Merlin Mayr](https://indigit.gmbh)
+[Moritz Mair](https://moritzmair.info/), [Matthias Radmüller](https://www.radmueller.net), [Merlin Mayr](https://indigit.gmbh)
 
 ##  Copyright and license
 

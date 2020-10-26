@@ -131,6 +131,8 @@ class Office365MailTransport extends Transport
                 ]
             ],
             'toRecipients' => $this->getTo($message),
+            'ccRecipients' => $this->getCc($message),
+            'bccRecipients' => $this->getBcc($message),
             'subject' => $message->getSubject(),
             'body' => [
                 'contentType' => $message->getBodyContentType() == "text/html" ? 'html' : 'text',
@@ -167,7 +169,51 @@ class Office365MailTransport extends Transport
      */
     protected function getTo(Swift_Mime_SimpleMessage $message)
     {
-        return collect($this->allContacts($message))->map(function ($display, $address) {
+        return collect((array) $message->getTo())->map(function ($display, $address) {
+            return $display ? [
+                'emailAddress' => [
+                    'address' => $address,
+                    'name' => $display
+                ]
+            ] : [
+                'emailAddress' => [
+                    'address' => $address
+                ]
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Get the "Cc" payload field for the API request.
+     *
+     * @param \Swift_Mime_SimpleMessage $message
+     * @return string
+     */
+    protected function getCc(Swift_Mime_SimpleMessage $message)
+    {
+        return collect((array) $message->getCc())->map(function ($display, $address) {
+            return $display ? [
+                'emailAddress' => [
+                    'address' => $address,
+                    'name' => $display
+                ]
+            ] : [
+                'emailAddress' => [
+                    'address' => $address
+                ]
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Get the "Bcc" payload field for the API request.
+     *
+     * @param \Swift_Mime_SimpleMessage $message
+     * @return string
+     */
+    protected function getBcc(Swift_Mime_SimpleMessage $message)
+    {
+        return collect((array) $message->getBcc())->map(function ($display, $address) {
             return $display ? [
                 'emailAddress' => [
                     'address' => $address,

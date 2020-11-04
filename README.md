@@ -36,7 +36,7 @@ For Larevel 6 and earlier please use
 ```
 {
   "require": {
-    "motze92/office365-mail": "1.0.4"
+    "motze92/office365-mail": "^1.0"
   }
 }
 ```

@@ -30,7 +30,7 @@ class Office365MailTransport extends Transport
         $messageBodySizeMb = json_encode($messageBody);
         $messageBodySizeMb = strlen($messageBodySizeMb);
         $messageBodySizeMb = $messageBodySizeMb / 1048576; //byte -> mb
-        if ($attachmentCount > 0 && $messageBodySizeMb >= 4) {
+        if ($messageBodySizeMb >= 4) {
             unset($messageBody);
             $graphMessage = $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages")
                 ->attachBody($this->getBody($message))

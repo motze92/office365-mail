@@ -27,7 +27,7 @@ class Office365MailTransport extends Transport
 
         //special treatment if the message has too large attachments
         $messageBody = $this->getBody($message, true);
-        $messageBodySizeMb = json_encode($messageBodySizeMb);
+        $messageBodySizeMb = json_encode($messageBody);
         $messageBodySizeMb = strlen($messageBodySizeMb);
         $messageBodySizeMb = $messageBodySizeMb / 1048576; //byte -> mb
         if ($attachmentCount > 0 && $messageBodySizeMb >= 4) {

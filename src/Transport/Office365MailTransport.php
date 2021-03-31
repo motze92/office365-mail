@@ -12,7 +12,6 @@ class Office365MailTransport extends Transport
 
     public function __construct()
     {
-
     }
 
     public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
@@ -24,21 +23,21 @@ class Office365MailTransport extends Transport
 
         $graph->setAccessToken($this->getAccessToken());
 
-
-        //special treatment if the message has too large attachments
+        // Special treatment if the message has too large attachments
         $messageBody = $this->getBody($message, true);
         $messageBodySizeMb = json_encode($messageBody);
         $messageBodySizeMb = strlen($messageBodySizeMb);
         $messageBodySizeMb = $messageBodySizeMb / 1048576; //byte -> mb
+
         if ($messageBodySizeMb >= 4) {
             unset($messageBody);
-            $graphMessage = $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages")
+            $graphMessage = $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/messages")
                 ->attachBody($this->getBody($message))
                 ->setReturnType(\Microsoft\Graph\Model\Message::class)
                 ->execute();
 
-            foreach($message->getChildren() as $attachment) {
-                if($attachment instanceof \Swift_Attachment) {
+            foreach ($message->getChildren() as $attachment) {
+                if ($attachment instanceof \Swift_Attachment) {
                     $fileName = $attachment->getHeaders()->get('Content-Disposition')->getParameter('filename');
                     $content = $attachment->getBody();
                     $fileSize = strlen($content);
@@ -51,7 +50,7 @@ class Office365MailTransport extends Transport
                         ]
                     ];
 
-                    if($size<=3) { //ErrorAttachmentSizeShouldNotBeLessThanMinimumSize if attachment <= 3mb, then we need to add this
+                    if ($size <= 3) { //ErrorAttachmentSizeShouldNotBeLessThanMinimumSize if attachment <= 3mb, then we need to add this
                         $attachmentBody = [
                             "@odata.type" => "#microsoft.graph.fileAttachment",
                             "name" => $attachment->getHeaders()->get('Content-Disposition')->getParameter('filename'),
@@ -59,21 +58,22 @@ class Office365MailTransport extends Transport
                             "contentBytes" => base64_encode($attachment->getBody())
                         ];
 
-                        $addAttachment = $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages/".$graphMessage->getId()."/attachments")
+                        $addAttachment = $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/messages/" . $graphMessage->getId() . "/attachments")
                             ->attachBody($attachmentBody)
                             ->setReturnType(UploadSession::class)
                             ->execute();
-                	} else {
+                    } else {
                         //upload the files in chunks of 4mb....
-                        $uploadSession = $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages/".$graphMessage->getId()."/attachments/createUploadSession")
+                        $uploadSession = $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/messages/" . $graphMessage->getId() . "/attachments/createUploadSession")
                             ->attachBody($attachmentMessage)
                             ->setReturnType(UploadSession::class)
                             ->execute();
-    
+
                         $fragSize =  1024 * 1024 * 4; //4mb at once...
                         $numFragments = ceil($fileSize / $fragSize);
                         $contentChunked = str_split($content, $fragSize);
                         $bytesRemaining = $fileSize;
+
                         $i = 0;
                         while ($i < $numFragments) {
                             $chunkSize = $numBytes = $fragSize;
@@ -86,8 +86,8 @@ class Office365MailTransport extends Transport
                             $data = $contentChunked[$i];
                             $content_range = "bytes " . $start . "-" . $end . "/" . $fileSize;
                             $headers = [
-                                "Content-Length"=> $numBytes,
-                                "Content-Range"=> $content_range
+                                "Content-Length" => $numBytes,
+                                "Content-Range" => $content_range
                             ];
                             $client = new \GuzzleHttp\Client();
                             $tmp = $client->put($uploadSession->getUploadUrl(), [
@@ -96,7 +96,7 @@ class Office365MailTransport extends Transport
                                 'allow_redirects' => false,
                                 'timeout'         => 1000
                             ]);
-                            $result = $tmp->getBody().'';
+                            $result = $tmp->getBody() . '';
                             $result = json_decode($result); //if body == empty, then the file was successfully uploaded
                             $bytesRemaining = $bytesRemaining - $chunkSize;
                             $i++;
@@ -106,14 +106,13 @@ class Office365MailTransport extends Transport
             }
 
             //definetly send the message
-            $graph->createRequest("POST", "/users/".key($message->getFrom())."/messages/".$graphMessage->getId()."/send")->execute();
+            $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/messages/" . $graphMessage->getId() . "/send")->execute();
         } else {
-            $graphMessage = $graph->createRequest("POST", "/users/".key($message->getFrom())."/sendmail")
+            $graphMessage = $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/sendmail")
                 ->attachBody($messageBody)
                 ->setReturnType(\Microsoft\Graph\Model\Message::class)
                 ->execute();
         }
-
 
         $this->sendPerformed($message);
 
@@ -151,8 +150,8 @@ class Office365MailTransport extends Transport
             $messageData = ['message' => $messageData];
             //add attachments if any
             $attachments = [];
-            foreach($message->getChildren() as $attachment) {
-                if($attachment instanceof \Swift_Attachment) {
+            foreach ($message->getChildren() as $attachment) {
+                if ($attachment instanceof \Swift_Attachment) {
                     $attachments[] = [
                         "@odata.type" => "#microsoft.graph.fileAttachment",
                         "name" => $attachment->getHeaders()->get('Content-Disposition')->getParameter('filename'),
@@ -161,10 +160,11 @@ class Office365MailTransport extends Transport
                     ];
                 }
             }
-            if(count($attachments)>0) {
+            if (count($attachments) > 0) {
                 $messageData['message']['attachments'] = $attachments;
             }
         }
+
         return $messageData;
     }
 
@@ -264,5 +264,4 @@ class Office365MailTransport extends Transport
 
         return $token->access_token;
     }
-
 }

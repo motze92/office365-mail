@@ -1,19 +1,20 @@
-<?php 
-namespace Office365Mail; 
- 
+<?php
+
+namespace Office365Mail;
+
 use Illuminate\Mail\MailManager;
 use Illuminate\Support\ServiceProvider;
 use Office365Mail\Transport\Office365MailTransport;
 
-class Office365MailServiceProvider extends ServiceProvider 
-{ 
-    public function boot() 
-    { 
-    $this->publishes([
-            __DIR__.'/config/office365mail.php' => config_path('office365mail.php')
+class Office365MailServiceProvider extends ServiceProvider
+{
+    public function boot()
+    {
+        $this->publishes([
+            __DIR__ . '/config/office365mail.php' => config_path('office365mail.php')
         ], 'office365mail');
     }
- 
+
     /**
      * {@inheritdoc}
      */

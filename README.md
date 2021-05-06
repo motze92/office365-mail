@@ -31,7 +31,7 @@ You can install the package with Composer, either run `composer require motze92/
 
 ### Laravel < 7
 
-For Larevel 6 and earlier please use
+For Laravel 6 and earlier please use
 
 ```
 {

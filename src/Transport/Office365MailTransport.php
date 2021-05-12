@@ -23,12 +23,12 @@ class Office365MailTransport extends Transport
 
         $graph->setAccessToken($this->getAccessToken());
 
-
-        //special treatment if the message has too large attachments
+        // Special treatment if the message has too large attachments
         $messageBody = $this->getBody($message, true);
         $messageBodySizeMb = json_encode($messageBody);
         $messageBodySizeMb = strlen($messageBodySizeMb);
         $messageBodySizeMb = $messageBodySizeMb / 1048576; //byte -> mb
+
         if ($messageBodySizeMb >= 4) {
             unset($messageBody);
             $graphMessage = $graph->createRequest("POST", "/users/" . key($message->getFrom()) . "/messages")
@@ -73,6 +73,7 @@ class Office365MailTransport extends Transport
                         $numFragments = ceil($fileSize / $fragSize);
                         $contentChunked = str_split($content, $fragSize);
                         $bytesRemaining = $fileSize;
+
                         $i = 0;
                         while ($i < $numFragments) {
                             $chunkSize = $numBytes = $fragSize;
@@ -112,7 +113,6 @@ class Office365MailTransport extends Transport
                 ->setReturnType(\Microsoft\Graph\Model\Message::class)
                 ->execute();
         }
-
 
         $this->sendPerformed($message);
 
@@ -165,6 +165,7 @@ class Office365MailTransport extends Transport
                 $messageData['message']['attachments'] = $attachments;
             }
         }
+
         return $messageData;
     }
 

@@ -1,5 +1,5 @@
 
-#  Laravel Microsoft Graph Mail driver - Mail Driver for Office365 
+#  Laravel Microsoft Graph Mail driver - Mail Driver for Office365
 
 
 Mail driver for the [Laravel framework](https://laravel.com/) to send emails using Microsoft Graph without user authentication and SMTP. Only specify the E-Mail-Address in the FROM-Header of the E-Mail and this Office 365 Package will send the E-Mail trough the Microsoft Graph-Api and put the sent E-Mail in the sender's Mailbox sent folder.
@@ -15,7 +15,7 @@ Mail driver for the [Laravel framework](https://laravel.com/) to send emails usi
 
 To use this package you have to register your application [here](https://go.microsoft.com/fwlink/?linkid=2083908). More informations [here](https://docs.microsoft.com/en-us/graph/auth-register-app-v2).
 
-  
+
 
 ##  Install the Package
 
@@ -31,7 +31,7 @@ You can install the package with Composer, either run `composer require motze92/
 
 ### Laravel < 7
 
-For Larevel 6 and earlier please use 
+For Laravel 6 and earlier please use
 
 ```
 {
@@ -43,17 +43,17 @@ For Larevel 6 and earlier please use
 
 To publish the config file use this command:
 
-  
+
 
 ```php
 php  artisan  vendor:publish  --tag=office365mail
 ```
 
-  
+
 
 ##  Configure
 
-  
+
 
 To obtain needed config values use this [instructions](https://docs.microsoft.com/en-us/graph/auth-v2-service):
 
@@ -65,11 +65,20 @@ To obtain needed config values use this [instructions](https://docs.microsoft.co
   - In the Section Manage > Certificates and Secrets create a new Client Secret with Expiration = never, this you need later for the `.env` - Variable  `OFFICE365MAIL_CLIENT_SECRET`
 
 The `Mail.ReadWrite` Permission is needed when sending large attachments (>4MB).
-  
+
 #### .env - File
+##### Laravel < 7
 
 ```
 MAIL_DRIVER=office365mail
+OFFICE365MAIL_CLIENT_ID=YOUR-MS-GRAPH-CLIENT-ID
+OFFICE365MAIL_TENANT=YOUR-MS-GRAPH-TENANT-ID
+OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
+```
+
+##### Laravel > 7
+```
+MAIL_MAILER=office365mail
 OFFICE365MAIL_CLIENT_ID=YOUR-MS-GRAPH-CLIENT-ID
 OFFICE365MAIL_TENANT=YOUR-MS-GRAPH-TENANT-ID
 OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
@@ -84,7 +93,7 @@ OFFICE365MAIL_CLIENT_SECRET=YOUR-MS-GRAPH-CLIENT-SECRET
 ```
 
 ## Credits
-  
+
 [Moritz Mair](https://moritzmair.info/), [Matthias Radmüller](https://www.radmueller.net), [Merlin Mayr](https://indigit.gmbh)
 
 ##  Copyright and license

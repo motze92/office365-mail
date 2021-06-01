@@ -269,7 +269,7 @@ class Office365MailTransport extends Transport
             (array) $message->getTo(),
             (array) $message->getCc(),
             (array) $message->getBcc(),
-            (array) $message->getReplyTo(),
+            (array) $message->getReplyTo()
         );
     }
 

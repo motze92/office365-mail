@@ -21,6 +21,21 @@ To use this package you have to register your application [here](https://go.micr
 
 You can install the package with Composer, either run `composer require motze92/office365-mail`, or edit your `composer.json` file:
 
+### Laravel 9
+
+For Laravel 9 please use
+
+```
+{
+  "require": {
+    "motze92/office365-mail": "^3.0"
+  }
+}
+```
+### Laravel 8
+
+For Laravel 8 please use
+
 ```
 {
   "require": {

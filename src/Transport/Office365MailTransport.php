@@ -16,6 +16,7 @@ class Office365MailTransport extends AbstractTransport
 
     public function __construct()
     {
+        parent::__construct();
     }
 
     protected function doSend(SentMessage $message): void

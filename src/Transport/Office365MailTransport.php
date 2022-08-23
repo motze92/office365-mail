@@ -243,15 +243,15 @@ class Office365MailTransport extends AbstractTransport
      */
     protected function getBcc(Email $message)
     {
-        return collect((array) $message->getBcc())->map(function ($display, $address) {
-            return $display ? [
+        return collect((array) $message->getBcc())->map(function ($address) {
+            return $address->getName() ? [
                 'emailAddress' => [
-                    'address' => $address,
-                    'name' => $display
+                    'address' => $address->getAddress(),
+                    'name' => $address->getName()
                 ]
             ] : [
                 'emailAddress' => [
-                    'address' => $address
+                    'address' => $address->getAddress()
                 ]
             ];
         })->values()->toArray();

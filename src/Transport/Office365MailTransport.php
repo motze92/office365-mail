@@ -39,7 +39,7 @@ class Office365MailTransport extends AbstractTransport
         if ($messageBodySizeMb >= 4) {
             unset($messageBody);
             $graphMessage = $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/messages")
-                ->attachBody($this->getBody($email))
+                ->attachBody($this->getBody($email)["message"])
                 ->setReturnType(\Microsoft\Graph\Model\Message::class)
                 ->execute();
 

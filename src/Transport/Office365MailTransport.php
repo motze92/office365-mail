@@ -146,7 +146,8 @@ class Office365MailTransport extends Transport
             'body' => [
                 'contentType' => $message->getBodyContentType() == "text/html" ? 'html' : 'text',
                 'content' => $message->getBody()
-            ]
+            ],
+            'importance' => $message->getPriority() < 3 ? 'high' : ($message->getPriority() > 3 ? 'low' : 'normal'),
         ];
 
         if ($withAttachments) {

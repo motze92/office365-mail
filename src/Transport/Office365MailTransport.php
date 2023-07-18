@@ -142,9 +142,10 @@ class Office365MailTransport extends AbstractTransport
             'replyTo' => $this->getReplyTo($message),
             'subject' => $message->getSubject(),
             'body' => [
-                'contentType' => $message->getHtmlBody() ? 'html' : 'text',
-                'content' => $message->getHtmlBody() ? $message->getHtmlBody() : $message->getTextBody()
-            ]
+                'contentType' => $message->getBodyContentType() == "text/html" ? 'html' : 'text',
+                'content' => $message->getBody()
+            ],
+            'importance' => $message->getPriority() < 3 ? 'high' : ($message->getPriority() > 3 ? 'low' : 'normal'),
         ];
         $messageData = ['message' => $messageData];
 

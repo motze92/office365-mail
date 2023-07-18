@@ -21,6 +21,21 @@ To use this package you have to register your application [here](https://go.micr
 
 You can install the package with Composer, either run `composer require motze92/office365-mail`, or edit your `composer.json` file:
 
+### Laravel 9
+
+For Laravel 9 please use
+
+```
+{
+  "require": {
+    "motze92/office365-mail": "^3.0"
+  }
+}
+```
+### Laravel 8
+
+For Laravel 8 please use
+
 ```
 {
   "require": {
@@ -62,7 +77,7 @@ To obtain needed config values use this [instructions](https://docs.microsoft.co
   - Create a new App
   - Within the App under `Manage` >  `API-Permissions` > `Application Permissions` add the `Mail.ReadWrite` and the `Mail.Send` permission (Microsoft Graph > Application Permissions > Mail > Mail.ReadWrite and Microsoft Graph > Application Permissions > Mail > Mail.Send)
   - After saving the permission apply the Admin-Permission for your organization
-  - In the Section Manage > Certificates and Secrets create a new Client Secret with Expiration = never, this you need later for the `.env` - Variable  `OFFICE365MAIL_CLIENT_SECRET`
+  - In the Section Manage > Certificates and Secrets create a new Client Secret with Expiration = 24 months, this you need later for the `.env` - Variable  `OFFICE365MAIL_CLIENT_SECRET`
 
 The `Mail.ReadWrite` Permission is needed when sending large attachments (>4MB).
 

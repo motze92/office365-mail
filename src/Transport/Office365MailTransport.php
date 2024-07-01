@@ -149,6 +149,11 @@ class Office365MailTransport extends Transport
             ]
         ];
 
+        $entityHeader = $message->getHeaders()->get('x-hso-entity');
+        if($entityHeader){
+            $messageData['internetMessageHeaders'][] = ['name' => $entityHeader->getName(), 'value' => $entityHeader->getValue()];
+        }
+
         if ($withAttachments) {
             $messageData = ['message' => $messageData];
             //add attachments if any

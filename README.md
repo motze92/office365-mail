@@ -21,17 +21,21 @@ To use this package you have to register your application [here](https://go.micr
 
 You can install the package with Composer, either run `composer require motze92/office365-mail`, or edit your `composer.json` file:
 
-### Laravel 9
+### Laravel 9 and newer
 
-For Laravel 9 please use
+For Laravel 9 up to Laravel 13 please use
 
 ```
 {
   "require": {
-    "motze92/office365-mail": "^3.0"
+    "motze92/office365-mail": "^3.2"
   }
 }
 ```
+
+Versions before 3.2 build the message body with Swift Mailer methods that
+Symfony Mime does not provide, so sending fails on Laravel 10 and newer.
+
 ### Laravel 8
 
 For Laravel 8 please use

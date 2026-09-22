@@ -2,281 +2,340 @@
 
 namespace Office365Mail\Transport;
 
+use GuzzleHttp\Client;
 use Microsoft\Graph\Graph;
+use Microsoft\Graph\Model\Message as GraphMessage;
 use Microsoft\Graph\Model\UploadSession;
+use RuntimeException;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
-use Symfony\Component\Mime\MessageConverter;
-
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
-use Illuminate\Support\Str;
+use Symfony\Component\Mime\MessageConverter;
+use Symfony\Component\Mime\Part\DataPart;
 
 class Office365MailTransport extends AbstractTransport
 {
+    /** Graph rejects a sendMail payload above this size, so it goes out as a draft instead. */
+    protected const MAX_PAYLOAD_MB = 4;
 
-    public function __construct()
-    {
-        parent::__construct();
-    }
+    /** Attachments up to this size are posted directly, larger ones need an upload session. */
+    protected const MAX_SIMPLE_ATTACHMENT_MB = 3;
+
+    protected const BYTES_PER_MB = 1048576;
 
     protected function doSend(SentMessage $message): void
-    // public function send(Swift_Mime_SimpleMessage $message, &$failedRecipients = null)
     {
-
-        // $this->beforeSendPerformed($message);
         $email = MessageConverter::toEmail($message->getOriginalMessage());
 
         $graph = new Graph();
-
         $graph->setAccessToken($this->getAccessToken());
 
-        // Special treatment if the message has too large attachments
-        $messageBody = $this->getBody($email, !!$email->getAttachments());
-        $messageBodySizeMb = json_encode($messageBody);
-        $messageBodySizeMb = strlen($messageBodySizeMb);
-        $messageBodySizeMb = $messageBodySizeMb / 1048576; //byte -> mb
+        $sender = $this->getSender($email);
+        $payload = $this->getBody($email, (bool) $email->getAttachments());
 
-        if ($messageBodySizeMb >= 4) {
-            unset($messageBody);
-            $graphMessage = $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/messages")
-                ->attachBody($this->getBody($email)["message"])
-                ->setReturnType(\Microsoft\Graph\Model\Message::class)
+        if ($this->sizeInMb((string) json_encode($payload)) >= self::MAX_PAYLOAD_MB) {
+            $this->sendAsDraft($graph, $email, $sender);
+
+            return;
+        }
+
+        $graph->createRequest('POST', '/users/' . $sender . '/sendmail')
+            ->attachBody($payload)
+            ->setReturnType(GraphMessage::class)
+            ->execute();
+    }
+
+    /**
+     * Create the message as a draft, attach the files one by one and send it.
+     *
+     * Graph limits a sendMail request to 4 MB, a draft attachment to 150 MB.
+     */
+    protected function sendAsDraft(Graph $graph, Email $email, string $sender): void
+    {
+        $draft = $graph->createRequest('POST', '/users/' . $sender . '/messages')
+            ->attachBody($this->getBody($email)['message'])
+            ->setReturnType(GraphMessage::class)
+            ->execute();
+
+        foreach ($email->getAttachments() as $attachment) {
+            $this->attachToDraft($graph, $sender, (string) $draft->getId(), $attachment);
+        }
+
+        $graph->createRequest('POST', '/users/' . $sender . '/messages/' . $draft->getId() . '/send')->execute();
+    }
+
+    protected function attachToDraft(Graph $graph, string $sender, string $messageId, DataPart $attachment): void
+    {
+        $content = $this->getPartContent($attachment);
+        $fileSize = strlen($content);
+        $endpoint = '/users/' . $sender . '/messages/' . $messageId . '/attachments';
+
+        // ErrorAttachmentSizeShouldNotBeLessThanMinimumSize: an upload session is
+        // only accepted above 3 MB, anything smaller goes in a single request.
+        if ($this->sizeInMb($content) <= self::MAX_SIMPLE_ATTACHMENT_MB) {
+            $graph->createRequest('POST', $endpoint)
+                ->attachBody($this->getAttachmentBody($attachment))
+                ->setReturnType(UploadSession::class)
                 ->execute();
 
-            foreach ($email->getAttachments() as $attachment) {
-                $fileName = $attachment->getPreparedHeaders()->getHeaderParameter('Content-Disposition', 'filename');
-                $content = $attachment->getBody();
-                $fileSize = strlen($content);
-                $size = $fileSize / 1048576; //byte -> mb
-                $id = Str::random(10);
-                $attachmentMessage = [
-                    'AttachmentItem' => [
-                        'attachmentType' => 'file',
-                        'name' => $fileName,
-                        'size' => strlen($content)
-                    ]
-                ];
+            return;
+        }
 
-                if ($size <= 3) { //ErrorAttachmentSizeShouldNotBeLessThanMinimumSize if attachment <= 3mb, then we need to add this
-                    $attachmentBody = [
-                        "@odata.type" => "#microsoft.graph.fileAttachment",
-                        "name" => $attachment->getPreparedHeaders()->getHeaderParameter('Content-Disposition', 'filename'),
-                        "contentType" => $attachment->getPreparedHeaders()->get('Content-Type')->getValue(),
-                        "contentBytes" => base64_encode($attachment->getBody()),
-                        'contentId'    => $id
-                    ];
+        $uploadSession = $graph->createRequest('POST', $endpoint . '/createUploadSession')
+            ->attachBody([
+                'AttachmentItem' => [
+                    'attachmentType' => 'file',
+                    'name' => $this->getAttachmentName($attachment),
+                    'size' => $fileSize,
+                ],
+            ])
+            ->setReturnType(UploadSession::class)
+            ->execute();
 
-                    $addAttachment = $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/messages/" . $graphMessage->getId() . "/attachments")
-                        ->attachBody($attachmentBody)
-                        ->setReturnType(UploadSession::class)
-                        ->execute();
-                } else {
-                    //upload the files in chunks of 4mb....
-                    $uploadSession = $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/messages/" . $graphMessage->getId() . "/attachments/createUploadSession")
-                        ->attachBody($attachmentMessage)
-                        ->setReturnType(UploadSession::class)
-                        ->execute();
+        $this->uploadInChunks((string) $uploadSession->getUploadUrl(), $content, $fileSize);
+    }
 
-                    $fragSize =  1024 * 1024 * 4; //4mb at once...
-                    $numFragments = ceil($fileSize / $fragSize);
-                    $contentChunked = str_split($content, $fragSize);
-                    $bytesRemaining = $fileSize;
+    /**
+     * Upload the attachment in chunks of 4 MB, as the upload session requires.
+     */
+    protected function uploadInChunks(string $url, string $content, int $fileSize): void
+    {
+        $client = new Client();
+        $offset = 0;
 
-                    $i = 0;
-                    while ($i < $numFragments) {
-                        $chunkSize = $numBytes = $fragSize;
-                        $start = $i * $fragSize;
-                        $end = $i * $fragSize + $chunkSize - 1;
-                        if ($bytesRemaining < $chunkSize) {
-                            $chunkSize = $numBytes = $bytesRemaining;
-                            $end = $fileSize - 1;
-                        }
-                        $data = $contentChunked[$i];
-                        $content_range = "bytes " . $start . "-" . $end . "/" . $fileSize;
-                        $headers = [
-                            "Content-Length" => $numBytes,
-                            "Content-Range" => $content_range
-                        ];
-                        $client = new \GuzzleHttp\Client();
-                        $tmp = $client->put($uploadSession->getUploadUrl(), [
-                            'headers'         => $headers,
-                            'body'            => $data,
-                            'allow_redirects' => false,
-                            'timeout'         => 1000
-                        ]);
-                        $result = $tmp->getBody() . '';
-                        $result = json_decode($result); //if body == empty, then the file was successfully uploaded
-                        $bytesRemaining = $bytesRemaining - $chunkSize;
-                        $i++;
-                    }
-                }
-            }
+        foreach (str_split($content, self::MAX_PAYLOAD_MB * self::BYTES_PER_MB) as $chunk) {
+            $length = strlen($chunk);
 
-            //definetly send the message
-            $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/messages/" . $graphMessage->getId() . "/send")->execute();
-        } else {
-            $graphMessage = $graph->createRequest("POST", "/users/" . $email->getFrom()[0]->getAddress() . "/sendmail")
-                ->attachBody($messageBody)
-                ->setReturnType(\Microsoft\Graph\Model\Message::class)
-                ->execute();
+            $client->put($url, [
+                'headers' => [
+                    'Content-Length' => $length,
+                    'Content-Range' => 'bytes ' . $offset . '-' . ($offset + $length - 1) . '/' . $fileSize,
+                ],
+                'body' => $chunk,
+                'allow_redirects' => false,
+                'timeout' => 1000,
+            ]);
+
+            $offset += $length;
         }
     }
 
     /**
      * Get body for the message.
      *
-     * @param Symfony\Component\Mime\Email $message
+     * @param \Symfony\Component\Mime\Email $message
      * @param bool $withAttachments
      * @return array
      */
-
     protected function getBody(Email $message, $withAttachments = false)
     {
-        $messageData = [
-            'from' => [
-                'emailAddress' => $message->getFrom()[0]
-            ],
-            'toRecipients' => $this->getTo($message),
-            'ccRecipients' => $this->getCc($message),
-            'bccRecipients' => $this->getBcc($message),
-            'replyTo' => $this->getReplyTo($message),
-            'subject' => $message->getSubject(),
-            'body' => [
-                'contentType' => $message->getBodyContentType() == "text/html" ? 'html' : 'text',
-                'content' => $message->getBody()
-            ],
-            'importance' => $message->getPriority() < 3 ? 'high' : ($message->getPriority() > 3 ? 'low' : 'normal'),
-        ];
-        $messageData = ['message' => $messageData];
+        $from = $this->getFrom($message);
 
-        if ($withAttachments) {
-            //add attachments if any
-            $attachments = [];
-            foreach ($message->getAttachments() as $attachment) {
-                $headers = $attachment->getPreparedHeaders();
-                $attachments[] = [
-                    "@odata.type" => "#microsoft.graph.fileAttachment",
-                    "name" => $headers->getHeaderParameter('Content-Disposition', 'filename'),
-                    "contentType" => $headers->get('Content-Type')->getValue(),
-                    "contentBytes" => base64_encode($attachment->getBody()),
-                    'contentId'    => Str::random(10)
-                ];
-            }
-            if (count($attachments) > 0) {
-                $messageData['message']['attachments'] = $attachments;
-            }
+        $messageData = [
+            'message' => [
+                'from' => reset($from),
+                'toRecipients' => $this->getTo($message),
+                'ccRecipients' => $this->getCc($message),
+                'bccRecipients' => $this->getBcc($message),
+                'replyTo' => $this->getReplyTo($message),
+                'subject' => (string) $message->getSubject(),
+                'body' => [
+                    'contentType' => $message->getHtmlBody() === null ? 'text' : 'html',
+                    'content' => $this->stringify($message->getHtmlBody() ?? $message->getTextBody()),
+                ],
+                'importance' => $this->getImportance($message),
+            ],
+        ];
+
+        if (!$withAttachments) {
+            return $messageData;
+        }
+
+        $attachments = [];
+        foreach ($message->getAttachments() as $attachment) {
+            $attachments[] = $this->getAttachmentBody($attachment);
+        }
+
+        if (count($attachments) > 0) {
+            $messageData['message']['attachments'] = $attachments;
         }
 
         return $messageData;
     }
 
     /**
+     * Get the payload for a single attachment.
+     *
+     * @return array
+     */
+    protected function getAttachmentBody(DataPart $attachment)
+    {
+        $body = [
+            '@odata.type' => '#microsoft.graph.fileAttachment',
+            'name' => $this->getAttachmentName($attachment),
+            'contentType' => $attachment->getContentType(),
+            'contentBytes' => base64_encode($this->getPartContent($attachment)),
+        ];
+
+        // Embedded images are referenced by the HTML body through their cid, so
+        // the content id has to be the one Symfony generated, not a new one.
+        if ($attachment->getDisposition() === 'inline') {
+            $body['isInline'] = true;
+            $body['contentId'] = $attachment->getContentId();
+        }
+
+        return $body;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getAttachmentName(DataPart $attachment)
+    {
+        return $attachment->getFilename() ?: $attachment->getContentId();
+    }
+
+    /**
+     * Attachment contents can be a stream.
+     *
+     * @return string
+     */
+    protected function getPartContent(DataPart $attachment)
+    {
+        return $this->stringify($attachment->getBody());
+    }
+
+    /**
+     * The mailbox the message is sent from; Graph addresses it by user.
+     *
+     * @return string
+     */
+    protected function getSender(Email $message)
+    {
+        $from = $message->getFrom();
+
+        if (count($from) === 0) {
+            throw new RuntimeException('An office365mail message needs a from address');
+        }
+
+        return $from[0]->getAddress();
+    }
+
+    /**
+     * Get the "from" payload field for the API request.
+     *
+     * @param \Symfony\Component\Mime\Email $message
+     * @return array
+     */
+    protected function getFrom(Email $message)
+    {
+        return $this->mapAddresses($message->getFrom());
+    }
+
+    /**
      * Get the "to" payload field for the API request.
      *
-     * @param Symfony\Component\Mime\Email $message
-     * @return string
+     * @param \Symfony\Component\Mime\Email $message
+     * @return array
      */
     protected function getTo(Email $message)
     {
-        return collect((array) $message->getTo())->map(function ($address) {
-            return $address->getName() ? [
-                'emailAddress' => [
-                    'address' => $address->getAddress(),
-                    'name' => $address->getName()
-                ]
-            ] : [
-                'emailAddress' => [
-                    'address' => $address->getAddress()
-                ]
-            ];
-        })->values()->toArray();
+        return $this->mapAddresses($message->getTo());
     }
 
     /**
      * Get the "Cc" payload field for the API request.
      *
-     * @param Symfony\Component\Mime\Email $message
-     * @return string
+     * @param \Symfony\Component\Mime\Email $message
+     * @return array
      */
     protected function getCc(Email $message)
     {
-        return collect((array) $message->getCc())->map(function ($address) {
-            return $address->getName() ? [
-                'emailAddress' => [
-                    'address' => $address->getAddress(),
-                    'name' => $address->getName()
-                ]
-            ] : [
-                'emailAddress' => [
-                    'address' => $address->getAddress()
-                ]
-            ];
-        })->values()->toArray();
-    }
-
-    /**
-     * Get the "replyTo" payload field for the API request.
-     *
-     * @param Symfony\Component\Mime\Email $message
-     * @return string
-     */
-    protected function getReplyTo(Email $message)
-    {
-        return collect((array) $message->getReplyTo())->map(function ($address) {
-            return $address->getName() ? [
-                'emailAddress' => [
-                    'address' => $address->getAddress(),
-                    'name' => $address->getName()
-                ]
-            ] : [
-                'emailAddress' => [
-                    'address' => $address->getAddress()
-                ]
-            ];
-        })->values()->toArray();
+        return $this->mapAddresses($message->getCc());
     }
 
     /**
      * Get the "Bcc" payload field for the API request.
      *
-     * @param Symfony\Component\Mime\Email $message
-     * @return string
+     * @param \Symfony\Component\Mime\Email $message
+     * @return array
      */
     protected function getBcc(Email $message)
     {
-        return collect((array) $message->getBcc())->map(function ($address) {
-            return $address->getName() ? [
-                'emailAddress' => [
-                    'address' => $address->getAddress(),
-                    'name' => $address->getName()
-                ]
-            ] : [
-                'emailAddress' => [
-                    'address' => $address->getAddress()
-                ]
-            ];
-        })->values()->toArray();
+        return $this->mapAddresses($message->getBcc());
     }
 
     /**
-     * Get all of the contacts for the message.
+     * Get the "replyTo" payload field for the API request.
      *
-     * @param Symfony\Component\Mime\Email $message
+     * @param \Symfony\Component\Mime\Email $message
      * @return array
      */
-    protected function allContacts(Email $message)
+    protected function getReplyTo(Email $message)
     {
-        return array_merge(
-            (array) $message->getTo(),
-            (array) $message->getCc(),
-            (array) $message->getBcc(),
-            (array) $message->getReplyTo()
-        );
+        return $this->mapAddresses($message->getReplyTo());
+    }
+
+    /**
+     * Map the message priority onto the Graph importance values.
+     *
+     * @return string
+     */
+    protected function getImportance(Email $message)
+    {
+        $priority = $message->getPriority();
+
+        if ($priority < Email::PRIORITY_NORMAL) {
+            return 'high';
+        }
+
+        return $priority > Email::PRIORITY_NORMAL ? 'low' : 'normal';
+    }
+
+    /**
+     * @param array<int, Address> $addresses
+     * @return array
+     */
+    protected function mapAddresses(array $addresses)
+    {
+        return array_values(array_map(function (Address $address) {
+            $emailAddress = ['address' => $address->getAddress()];
+
+            if ($address->getName() !== '') {
+                $emailAddress['name'] = $address->getName();
+            }
+
+            return ['emailAddress' => $emailAddress];
+        }, $addresses));
+    }
+
+    /**
+     * Message bodies and attachment contents can be streams.
+     *
+     * @param resource|string|null $body
+     * @return string
+     */
+    protected function stringify($body)
+    {
+        if (is_resource($body)) {
+            return (string) stream_get_contents($body);
+        }
+
+        return (string) $body;
+    }
+
+    /**
+     * @return float
+     */
+    protected function sizeInMb(string $content)
+    {
+        return strlen($content) / self::BYTES_PER_MB;
     }
 
     protected function getAccessToken()
     {
-        $guzzle = new \GuzzleHttp\Client();
+        $guzzle = new Client();
         $url = 'https://login.microsoftonline.com/' . config('office365mail.tenant') . '/oauth2/v2.0/token';
         $token = json_decode($guzzle->post($url, [
             'form_params' => [
